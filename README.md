@@ -5,7 +5,7 @@ Arabic order-collection app for ختعم. React (Vite) on Vercel, Supabase for d
 - `/` enter the code, your name, and quantities. Same name replaces the earlier order.
 - `/admin` username/password login, shows the current code and the full summary. Reset wipes all orders and generates a new 6-digit code.
 
-Menu, prices, and delivery fee live in `src/menu.js` (item ids are also whitelisted in `supabase/schema.sql`).
+Menu items, prices, and the delivery fee live in the database and are edited from `/admin`. `supabase/schema.sql` is safe to re-run after pulling changes.
 
 ## Setup
 

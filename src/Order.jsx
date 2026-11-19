@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, errorMessage, isInvalidCode } from './supabase.js'
-import { MENU, GROUPS } from './menu.js'
-import { normalizeName, money, subtotalOf } from './summary.js'
+import { normalizeName, money, subtotalOf, groupMenu } from './summary.js'
 import Shell from './Shell.jsx'
 import Summary from './Summary.jsx'
 
@@ -12,20 +11,20 @@ const save = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.rem
 
 export default function Order() {
   const [code, setCode] = useState(() => load(CODE_KEY))
-  const [orders, setOrders] = useState(null)
+  const [state, setState] = useState(null)
   const [notice, setNotice] = useState('')
 
   const lock = useCallback((msg) => {
     save(CODE_KEY, '')
     setCode('')
-    setOrders(null)
+    setState(null)
     setNotice(msg)
   }, [])
 
   const refresh = useCallback(async () => {
-    const { data, error } = await supabase.rpc('get_orders', { p_code: code })
+    const { data, error } = await supabase.rpc('get_state', { p_code: code })
     if (isInvalidCode(error)) return lock('الكود اتغير، اطلب الكود الجديد')
-    if (!error) setOrders(data)
+    if (!error) setState(data)
   }, [code, lock])
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export default function Order() {
         onUnlock={(c, data) => {
           save(CODE_KEY, c)
           setNotice('')
-          setOrders(data)
+          setState(data)
           setCode(c)
         }}
       />
@@ -51,10 +50,10 @@ export default function Order() {
 
   return (
     <Shell subtitle="طلبات النهارده">
-      {orders ? (
+      {state ? (
         <>
-          <OrderForm code={code} orders={orders} onSaved={refresh} onLock={lock} />
-          <Summary orders={orders} highlight={normalizeName(load(NAME_KEY))} />
+          <OrderForm code={code} orders={state.orders} menu={state.menu} onSaved={refresh} onLock={lock} />
+          <Summary orders={state.orders} menu={state.menu} deliveryFee={state.delivery_fee} highlight={normalizeName(load(NAME_KEY))} />
         </>
       ) : (
         <p className="empty">جاري التحميل…</p>
@@ -71,7 +70,7 @@ function CodeScreen({ notice, onUnlock }) {
   async function submit(e) {
     e.preventDefault()
     setBusy(true)
-    const { data, error } = await supabase.rpc('get_orders', { p_code: value })
+    const { data, error } = await supabase.rpc('get_state', { p_code: value })
     setBusy(false)
     if (error) return setError(errorMessage(error))
     onUnlock(value, data)
@@ -102,7 +101,7 @@ function CodeScreen({ notice, onUnlock }) {
   )
 }
 
-function OrderForm({ code, orders, onSaved, onLock }) {
+function OrderForm({ code, orders, menu, onSaved, onLock }) {
   const [name, setName] = useState(() => load(NAME_KEY))
   const [qty, setQty] = useState({})
   const [busy, setBusy] = useState(false)
@@ -137,7 +136,8 @@ function OrderForm({ code, orders, onSaved, onLock }) {
     e.preventDefault()
     const n = normalizeName(name)
     if (!n) return setMsg({ type: 'error', text: 'اكتب اسمك الأول' })
-    const items = Object.fromEntries(Object.entries(qty).filter(([, v]) => v > 0))
+    // Drop items the admin removed from the menu since this page loaded.
+    const items = Object.fromEntries(Object.entries(qty).filter(([id, v]) => v > 0 && menu.some((m) => m.id === id)))
     if (!Object.keys(items).length) return setMsg({ type: 'error', text: 'اختار صنف واحد على الأقل' })
     save(NAME_KEY, n)
     run(() => supabase.rpc('submit_order', { p_code: code, p_name: n, p_items: items }),
@@ -149,7 +149,7 @@ function OrderForm({ code, orders, onSaved, onLock }) {
     setQty({})
   }
 
-  const subtotal = subtotalOf(qty)
+  const subtotal = subtotalOf(qty, menu)
 
   return (
     <div className="cw"><form className="card" onSubmit={submit}>
@@ -166,11 +166,11 @@ function OrderForm({ code, orders, onSaved, onLock }) {
       />
       {existing && <p className="hint">لقينا طلبك، عدّل وابعت تاني وهيتغير.</p>}
 
-      {GROUPS.map((g) => (
+      {groupMenu(menu).map((g) => (
         <div key={g.title} className="group">
           <h3><span className="group-icon">{g.icon}</span> {g.title}</h3>
           <div className="menu">
-            {MENU.filter((m) => m.group === g.title).map((m) => {
+            {g.items.map((m) => {
               const q = qty[m.id] || 0
               return (
                 <div className={`item ${q ? 'picked' : ''}`} key={m.id}>

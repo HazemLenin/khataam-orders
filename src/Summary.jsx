@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { MENU, DELIVERY_FEE } from './menu.js'
 import { summarize, money, toText } from './summary.js'
 
-const nameOf = (id) => MENU.find((m) => m.id === id)?.name ?? id
 const TONES = ['mustard', 'green', 'tomato', 'sky']
 const toneOf = (name) => TONES[[...name].reduce((h, c) => h + c.codePointAt(0), 0) % TONES.length]
 
-export default function Summary({ orders, highlight }) {
-  const s = summarize(orders)
+export default function Summary({ orders, menu, deliveryFee, highlight }) {
+  const s = summarize(orders, menu, deliveryFee)
   const [copied, setCopied] = useState(null)
 
   async function copy() {
@@ -61,11 +59,11 @@ export default function Summary({ orders, highlight }) {
                 <strong className="price">{money(p.total)}</strong>
               </div>
               <div className="chips">
-                {Object.entries(p.items).map(([id, q]) => (
-                  <span className="chip" key={id}>{q} {nameOf(id)}</span>
+                {p.lines.map((l) => (
+                  <span className="chip" key={l.id}>{l.qty} {l.name}</span>
                 ))}
               </div>
-              {DELIVERY_FEE > 0 && (
+              {s.fee > 0 && (
                 <div className="muted small">أصناف {money(p.subtotal)} + توصيل {money(p.feeShare)}</div>
               )}
             </div>

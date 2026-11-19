@@ -1,4 +1,4 @@
--- Run once in Supabase SQL editor.
+-- Run in Supabase SQL editor. Safe to re-run: it creates what's missing and updates functions.
 -- Tables have RLS on with no policies: the anon key can only call the functions below.
 
 create table if not exists settings (
@@ -6,6 +6,7 @@ create table if not exists settings (
   code text
 );
 insert into settings (id, code) values (1, null) on conflict do nothing;
+alter table settings add column if not exists delivery_fee numeric(8, 2) not null default 0 check (delivery_fee >= 0);
 
 create table if not exists orders (
   name text primary key,
@@ -13,8 +14,31 @@ create table if not exists orders (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists menu_items (
+  id text primary key default gen_random_uuid()::text,
+  name text not null check (length(btrim(name)) between 1 and 40),
+  price numeric(8, 2) not null check (price >= 0),
+  category text not null check (length(btrim(category)) between 1 and 30),
+  created_at timestamptz not null default now()
+);
+
+-- Seed the original menu once (ids match orders saved before the menu moved to the DB).
+insert into menu_items (id, name, price, category, created_at)
+select id, name, price, category, now() + make_interval(secs => n)
+from (values
+  (1, 'foul', 'فول', 10, 'فول'),
+  (2, 'foul_tahina', 'فول طحينة', 12, 'فول'),
+  (3, 'falafel', 'فلافل', 10, 'فلافل'),
+  (4, 'falafel_tahina', 'فلافل طحينة', 12, 'فلافل'),
+  (5, 'falafel_kiri', 'فلافل كيري', 20, 'فلافل'),
+  (6, 'potato_roumi', 'بطاطس رومي', 0, 'بطاطس'),
+  (7, 'potato_roumi_mozz', 'بطاطس رومي موتزريلا', 38, 'بطاطس')
+) as v(n, id, name, price, category)
+where not exists (select 1 from menu_items);
+
 alter table settings enable row level security;
 alter table orders enable row level security;
+alter table menu_items enable row level security;
 
 create or replace function check_code(p_code text) returns void
 language plpgsql security definer set search_path = public as $$
@@ -24,11 +48,17 @@ begin
   end if;
 end $$;
 
-create or replace function get_orders(p_code text) returns setof orders
+drop function if exists get_orders(text);
+
+create or replace function get_state(p_code text) returns json
 language plpgsql security definer set search_path = public as $$
 begin
   perform check_code(p_code);
-  return query select * from orders order by updated_at;
+  return json_build_object(
+    'orders', coalesce((select json_agg(o order by o.updated_at) from orders o), '[]'),
+    'menu', coalesce((select json_agg(m order by m.created_at) from menu_items m), '[]'),
+    'delivery_fee', (select delivery_fee from settings where id = 1)
+  );
 end $$;
 
 create or replace function submit_order(p_code text, p_name text, p_items jsonb) returns void
@@ -43,8 +73,7 @@ begin
   end if;
   if jsonb_typeof(p_items) is distinct from 'object' or exists (
     select 1 from jsonb_each(p_items)
-    -- keep in sync with src/menu.js ids
-    where key not in ('foul', 'foul_tahina', 'falafel', 'falafel_tahina', 'falafel_kiri', 'potato_roumi', 'potato_roumi_mozz')
+    where key not in (select id from menu_items)
        or jsonb_typeof(value) <> 'number'
        or value::numeric <> trunc(value::numeric)
        or value::numeric not between 0 and 20
@@ -77,8 +106,17 @@ begin
   update settings set code = p_new_code where id = 1;
 end $$;
 
-revoke execute on function check_code(text), get_orders(text), submit_order(text, text, jsonb),
-  delete_order(text, text), reset_orders(text) from public, anon, authenticated;
-grant execute on function get_orders(text), submit_order(text, text, jsonb), delete_order(text, text)
+-- Called only by /api/admin: removes the item and strips it from today's orders.
+create or replace function delete_menu_item(p_id text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  delete from menu_items where id = p_id;
+  update orders set items = items - p_id where items ? p_id;
+  delete from orders where items = '{}'::jsonb;
+end $$;
+
+revoke execute on function check_code(text), get_state(text), submit_order(text, text, jsonb),
+  delete_order(text, text), reset_orders(text), delete_menu_item(text) from public, anon, authenticated;
+grant execute on function get_state(text), submit_order(text, text, jsonb), delete_order(text, text)
   to anon, authenticated;
-grant execute on function reset_orders(text) to service_role;
+grant execute on function reset_orders(text), delete_menu_item(text) to service_role;
