@@ -92,7 +92,9 @@ export default function Admin() {
           <section className="card">
             <div className="code-box">
               <div className="muted">كود النهارده</div>
-              <div className="code-value">{data.code ?? '——'}</div>
+              <div className="code-value">
+                {(data.code ?? '------').split('').map((d, i) => <span key={i}>{d}</span>)}
+              </div>
               {!data.code && <div className="muted small">اضغط تصفير عشان تعمل أول كود</div>}
             </div>
             {msg && <p className={`alert ${msg.type}`}>{msg.text}</p>}
@@ -133,6 +135,7 @@ function Login({ onLogin }) {
   return (
     <Shell subtitle="دخول المسؤول">
       <form className="card code-card" onSubmit={submit}>
+        <div className="lock" aria-hidden="true">👨‍🍳</div>
         <label htmlFor="user">اسم المستخدم</label>
         <input id="user" className="input" autoComplete="username" value={user} onChange={(e) => setUser(e.target.value)} />
         <label htmlFor="pass">كلمة السر</label>

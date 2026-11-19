@@ -80,6 +80,7 @@ function CodeScreen({ notice, onUnlock }) {
   return (
     <Shell subtitle="اكتب كود النهارده عشان تطلب">
       <form className="card code-card" onSubmit={submit}>
+        <div className="lock" aria-hidden="true">🔐</div>
         <label htmlFor="code">كود الدخول</label>
         <input
           id="code"
@@ -101,11 +102,32 @@ function CodeScreen({ notice, onUnlock }) {
   )
 }
 
+function Burst() {
+  const bits = ['🧆', '🫘', '🍟', '🎉', '✨', '🌶️']
+  return (
+    <div className="burst" aria-hidden="true">
+      {Array.from({ length: 16 }, (_, i) => (
+        <span
+          key={i}
+          style={{
+            '--x': `${Math.round((Math.random() - 0.5) * 320)}px`,
+            '--y': `${Math.round(-120 - Math.random() * 260)}px`,
+            '--r': `${Math.round((Math.random() - 0.5) * 540)}deg`,
+          }}
+        >
+          {bits[i % bits.length]}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function OrderForm({ code, orders, onSaved, onLock }) {
   const [name, setName] = useState(() => load(NAME_KEY))
   const [qty, setQty] = useState({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [burst, setBurst] = useState(0)
 
   const existing = orders.find((o) => o.name === normalizeName(name))
 
@@ -119,7 +141,7 @@ function OrderForm({ code, orders, onSaved, onLock }) {
     setQty((q) => ({ ...q, [id]: n }))
   }
 
-  async function run(fn, okText) {
+  async function run(fn, okText, celebrate) {
     setBusy(true)
     setMsg(null)
     const { error } = await fn()
@@ -127,6 +149,7 @@ function OrderForm({ code, orders, onSaved, onLock }) {
     if (isInvalidCode(error)) return onLock('الكود اتغير، اطلب الكود الجديد')
     if (error) return setMsg({ type: 'error', text: errorMessage(error) })
     setMsg({ type: 'success', text: okText })
+    if (celebrate) setBurst((b) => b + 1)
     onSaved()
   }
 
@@ -138,7 +161,7 @@ function OrderForm({ code, orders, onSaved, onLock }) {
     if (!Object.keys(items).length) return setMsg({ type: 'error', text: 'اختار صنف واحد على الأقل' })
     save(NAME_KEY, n)
     run(() => supabase.rpc('submit_order', { p_code: code, p_name: n, p_items: items }),
-      existing ? 'تم تعديل طلبك ✅' : 'تم تسجيل طلبك ✅')
+      existing ? 'تم تعديل طلبك ✅' : 'تم تسجيل طلبك، بالهنا والشفا 😋', true)
   }
 
   function remove() {
@@ -163,17 +186,18 @@ function OrderForm({ code, orders, onSaved, onLock }) {
       />
       {existing && <p className="hint">لقينا طلبك، عدّل وابعت تاني وهيتغير.</p>}
 
-      {GROUPS.map((g) => (
-        <div key={g.title} className="group">
-          <h3><span>{g.icon}</span> {g.title}</h3>
+      {GROUPS.map((g, gi) => (
+        <div key={g.title} className={`group ${['mustard', 'green', 'tomato'][gi % 3]}`}>
+          <h3><span className="group-icon">{g.icon}</span> {g.title}</h3>
           <div className="menu">
             {MENU.filter((m) => m.group === g.title).map((m) => {
               const q = qty[m.id] || 0
               return (
                 <div className={`item ${q ? 'picked' : ''}`} key={m.id}>
+                  <div className="item-icon" aria-hidden="true">{g.icon}</div>
                   <div className="grow">
                     <div className="item-name">{m.name}</div>
-                    <div className="muted small">{money(m.price)}</div>
+                    <div className="item-price">{money(m.price)}</div>
                   </div>
                   <div className="stepper">
                     <button type="button" aria-label={`زود ${m.name}`} onClick={() => setItem(m.id, q + 1)}>+</button>
@@ -197,6 +221,7 @@ function OrderForm({ code, orders, onSaved, onLock }) {
       ))}
 
       {msg && <p className={`alert ${msg.type}`}>{msg.text}</p>}
+      {burst > 0 && <Burst key={burst} />}
 
       <div className="bar">
         <div>
