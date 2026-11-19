@@ -1,0 +1,12 @@
+{
+  "name": "طلبات ختعم",
+  "short_name": "ختعم",
+  "description": "اجمع طلبات الفطار من ختعم في طلب واحد.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e9e5da",
+  "theme_color": "#e9e5da",
+  "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}
