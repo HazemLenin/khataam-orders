@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { summarize, toText } from './summary.js'
 import Shell from './Shell.jsx'
 import Summary from './Summary.jsx'
 
@@ -74,25 +73,18 @@ export default function Admin() {
     setBusy(false)
   }
 
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(toText(summarize(data.orders)))
-      setMsg({ type: 'success', text: 'اتنسخ الطلب، الصقه في واتساب 📋' })
-    } catch {
-      setMsg({ type: 'error', text: 'النسخ مانفعش' })
-    }
-  }
-
   return (
     <Shell subtitle="لوحة التحكم">
       {!data ? (
         <p className="empty">جاري التحميل…</p>
       ) : (
         <>
-          <section className="card">
+          <div className="cw"><section className="card">
             <div className="code-box">
               <div className="muted">كود النهارده</div>
-              <div className="code-value">{data.code ?? '——'}</div>
+              <div className="code-value">
+                {(data.code ?? '------').split('').map((d, i) => <span key={i}>{d}</span>)}
+              </div>
               {!data.code && <div className="muted small">اضغط تصفير عشان تعمل أول كود</div>}
             </div>
             {msg && <p className={`alert ${msg.type}`}>{msg.text}</p>}
@@ -100,10 +92,9 @@ export default function Admin() {
               <button className="btn danger" onClick={reset} disabled={busy}>
                 {busy ? 'جاري التصفير…' : 'تصفير الطلبات وكود جديد'}
               </button>
-              <button className="btn ghost" onClick={copy} disabled={!data.orders.length}>نسخ الطلب كنص</button>
               <button className="btn ghost" onClick={logout}>خروج</button>
             </div>
-          </section>
+          </section></div>
           <Summary orders={data.orders} />
         </>
       )}
@@ -132,14 +123,15 @@ function Login({ onLogin }) {
 
   return (
     <Shell subtitle="دخول المسؤول">
-      <form className="card code-card" onSubmit={submit}>
+      <div className="cw narrow"><form className="card code-card" onSubmit={submit}>
+        <div className="lock" aria-hidden="true">👨‍🍳</div>
         <label htmlFor="user">اسم المستخدم</label>
         <input id="user" className="input" autoComplete="username" value={user} onChange={(e) => setUser(e.target.value)} />
         <label htmlFor="pass">كلمة السر</label>
         <input id="pass" className="input" type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} />
         {error && <p className="alert error">{error}</p>}
         <button className="btn primary" disabled={!user || !pass || busy}>{busy ? 'جاري الدخول…' : 'دخول'}</button>
-      </form>
+      </form></div>
     </Shell>
   )
 }
