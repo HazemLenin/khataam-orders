@@ -67,9 +67,7 @@ export default function Admin() {
     try {
       const d = await call(creds, 'reset')
       setData(d)
-      setMsg(d.emailed
-        ? { type: 'success', text: 'تم التصفير والكود الجديد اتبعت على الإيميل ✅' }
-        : { type: 'error', text: 'تم التصفير بس الإيميل مااتبعتش، خد الكود من هنا' })
+      setMsg({ type: 'success', text: 'تم التصفير، ابعت الكود الجديد للناس ✅' })
     } catch (e) {
       setMsg({ type: 'error', text: e.message })
     }
