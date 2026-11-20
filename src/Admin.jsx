@@ -82,6 +82,15 @@ export default function Admin() {
     run('reset', {}, 'تم التصفير، ابعت الكود الجديد للناس ✅')
   }
 
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(data.code)
+      setMsg({ type: 'success', text: 'اتنسخ الكود 📋' })
+    } catch {
+      setMsg({ type: 'error', text: 'النسخ مانفعش' })
+    }
+  }
+
   return (
     <Shell subtitle="لوحة التحكم">
       {!data ? (
@@ -98,6 +107,7 @@ export default function Admin() {
             </div>
             {msg && <p className={`alert ${msg.type}`}>{msg.text}</p>}
             <div className="actions wrap">
+              {data.code && <button className="btn ghost" onClick={copyCode}>📋 نسخ الكود</button>}
               <button className="btn danger" onClick={reset} disabled={busy}>
                 {busy ? 'لحظة…' : 'تصفير الطلبات وكود جديد'}
               </button>
