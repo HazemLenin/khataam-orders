@@ -31,6 +31,7 @@ test('delivery fee split and deleted items ignored', () => {
   assert.equal(s.total, 40)
   assert.deepEqual(s.people.map((p) => p.total), [13.33, 13.33, 13.33])
   assert.ok(!toText(s).includes('gone'))
+  assert.ok(toText(s).includes('توصيل 3.33 ج.م = 13.33 ج.م'))
 })
 
 test('groupMenu keeps category order and sorts by price', () => {

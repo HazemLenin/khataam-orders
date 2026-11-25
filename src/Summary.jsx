@@ -64,7 +64,7 @@ export default function Summary({ orders, menu, deliveryFee, highlight }) {
                 ))}
               </div>
               {s.fee > 0 && (
-                <div className="muted small">أصناف {money(p.subtotal)} + توصيل {money(p.feeShare)}</div>
+                <div className="muted small">أصناف {money(p.subtotal)} + توصيل {money(p.feeShare)} = {money(p.total)}</div>
               )}
             </div>
           </div>

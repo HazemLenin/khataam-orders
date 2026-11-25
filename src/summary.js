@@ -51,6 +51,7 @@ export function toText(s) {
   lines.push('', `الإجمالي: ${money(s.total)}`, '', '— حساب كل واحد —')
   for (const p of s.people) {
     lines.push(`${p.name}: ${money(p.total)} (${p.lines.map((l) => `${l.qty} ${l.name}`).join('، ')})`)
+    if (s.fee > 0) lines.push(`   أصناف ${money(p.subtotal)} + توصيل ${money(p.feeShare)} = ${money(p.total)}`)
   }
   return lines.join('\n')
 }
